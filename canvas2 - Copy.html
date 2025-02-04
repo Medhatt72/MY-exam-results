@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدرسة الشهيد مجدى النبراوى - تعليم اساسى</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        input {
+            padding: 10px;
+            width: 50%;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: #fff;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .student-info {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>مدرسة الشهيد مجدى النبراوى - تعليم اساسى</h2>
+    <h2>نتائج الامتحانات</h2>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" onchange="loadExcel()">
+    <input type="text" id="search" placeholder="ابحث برقم الطالب أو اسمه" onkeyup="searchResults()">
+    <div id="student-info" class="student-info"></div>
+    <table>
+        <thead>
+            <tr>
+                <th>الدرجة</th>
+                <th>التقدير</th>
+                <th>المادة</th>
+            </tr>
+        </thead>
+        <tbody id="results"></tbody>
+    </table>
+
+    <script>
+        let students = {};
+
+        function getGrade(score) {
+            if (score >= 90) return "ممتاز";
+            if (score >= 80) return "جيد جدًا";
+            if (score >= 70) return "جيد";
+            return "مقبول";
+        }
+
+        function loadExcel() {
+            let file = document.getElementById("fileInput").files[0];
+            let reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+            reader.onload = function(e) {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, { type: 'array' });
+                let sheetName = workbook.SheetNames[0];
+                let sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                students = {};
+                
+                sheet.forEach(row => {
+                    let id = row["رقم الطالب"] ? row["رقم الطالب"].toString() : null;
+                    let name = row["اسم الطالب"] ? row["اسم الطالب"].toString() : "غير معروف";
+                    let subject = row["المادة"] ? row["المادة"].toString() : "غير محددة";
+                    let score = row["الدرجة"] ? parseFloat(row["الدرجة"]) : 0;
+                    
+                    if (id) {
+                        if (!students[id]) {
+                            students[id] = { name: name, grades: [] };
+                        }
+                        students[id].grades.push({ subject: subject, score: score });
+                    }
+                });
+                
+                localStorage.setItem("studentsData", JSON.stringify(students));
+                document.getElementById("fileInput").style.display = "none";
+            };
+        }
+
+        function searchResults() {
+            let input = document.getElementById("search").value.toLowerCase().trim();
+            let resultsTable = document.getElementById("results");
+            let studentInfo = document.getElementById("student-info");
+            resultsTable.innerHTML = "";
+            studentInfo.innerHTML = "";
+            
+            students = JSON.parse(localStorage.getItem("studentsData")) || {};
+            
+            for (let id in students) {
+                let student = students[id];
+                if (id.includes(input) || student.name.toLowerCase().includes(input)) {
+                    studentInfo.innerHTML = `الطالب: ${student.name} - رقم الطالب: ${id}`;
+                    student.grades.forEach(grade => {
+                        resultsTable.innerHTML += `<tr><td>${grade.subject}</td><td>${grade.score}</td><td>${getGrade(grade.score)}</td></tr>`;
+                    });
+                    return;
+                }
+            }
+            studentInfo.innerHTML = "لم يتم العثور على الطالب";
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (localStorage.getItem("studentsData")) {
+                document.getElementById("fileInput").style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
